@@ -1,0 +1,13 @@
+Resources:
+  AIOptOutPolicy:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Name: AIServicesOptOut
+      Type: AISERVICES_OPT_OUT_POLICY
+      Content:
+        services:
+          default:
+            opt_out_policy:
+              '@@assign': optOut
+      TargetIds:
+        - !Ref AWS::OrganizationRoot

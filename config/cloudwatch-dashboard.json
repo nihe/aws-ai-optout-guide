@@ -1,0 +1,18 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "properties": {
+        "metrics": [
+          ["AWS/Rekognition", "SuccessfulImageCount"],
+          ["AWS/Transcribe", "SuccessfulTranscriptionCount"],
+          ["AWS/Comprehend", "SuccessfulRequestCount"]
+        ],
+        "period": 300,
+        "stat": "Sum",
+        "region": "us-east-1",
+        "title": "AI Service Usage (Should show normal usage)"
+      }
+    }
+  ]
+}

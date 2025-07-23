@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Enable and configure AI Services Opt-Out Policy'
+
+Resources:
+  # Custom resource to enable policy type
+  EnableAIOptOutPolicyType:
+    Type: Custom::EnablePolicyType
+    Properties:
+      ServiceToken: !GetAtt EnablePolicyFunction.Arn
+      PolicyType: AISERVICES_OPT_OUT_POLICY
+
+  # Lambda function to enable policy type
+  EnablePolicyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: EnableAIOptOutPolicyType
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt LambdaRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          
+          def handler(event, context):
+              try:
+                  if event['RequestType'] == 'Delete':
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      return
+                  
+                  org = boto3.client('organizations')
+                  roots = org.list_roots()['Roots']
+                  root_id = roots[0]['Id']
+                  
+                  # Enable AI opt-out policy type
+                  try:
+                      org.enable_policy_type(
+                          RootId=root_id,
+                          PolicyType='AISERVICES_OPT_OUT_POLICY'
+                      )
+                  except org.exceptions.PolicyTypeAlreadyEnabledException:
+                      pass  # Already enabled
+                  
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  # Lambda execution role
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: OrganizationsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - organizations:EnablePolicyType
+                  - organizations:ListRoots
+                  - organizations:CreatePolicy
+                  - organizations:AttachPolicy
+                Resource: '*'
+
+  # AI Opt-Out Policy
+  AIOptOutPolicy:
+    Type: AWS::Organizations::Policy
+    DependsOn: EnableAIOptOutPolicyType
+    Properties:
+      Name: AIServicesOptOut
+      Description: Opt out of AI service data usage
+      Type: AISERVICES_OPT_OUT_POLICY
+      Content: |
+        {
+          "services": {
+            "default": {
+              "opt_out_policy": {
+                "@@assign": "optOut"
+              }
+            }
+          }
+        }
+      TargetIds:
+        - !Sub '${AWS::AccountId}'

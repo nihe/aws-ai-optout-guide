@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS AI Services Opt-Out Policy'
+
+Resources:
+  AIOptOutPolicy:
+    Type: AWS::Organizations::Policy
+    Properties:
+      Name: AI-OptOut-All-Services
+      Description: Opt out of AI service data usage
+      Type: AISERVICES_OPT_OUT_POLICY
+      Content:
+        services:
+          default:
+            opt_out_policy:
+              "@@assign": "optOut"
+      TargetIds:
+        - !GetAtt Organization.RootId
+
+  Organization:
+    Type: AWS::Organizations::Organization
+    Properties:
+      FeatureSet: ALL
