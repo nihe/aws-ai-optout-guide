@@ -1,27 +1,47 @@
-from aws_cdk import Stack
-from aws_cdk.aws_organizations import CfnPolicy, CfnOrganization
+from aws_cdk import RemovalPolicy, Stack
+from aws_cdk.aws_organizations import CfnPolicy
 from constructs import Construct
 
+
 class AIOptOutStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    """AI Services opt-out policy (hardened variant) for an EXISTING organization.
+
+    This stack deliberately does not create or own the organization. Pass the
+    existing organization root ID (r-xxxx) via context or props — see app.py.
+
+    One-time prerequisite in the management account (an API call, not a resource):
+        aws organizations enable-policy-type \
+            --root-id <r-xxxx> --policy-type AISERVICES_OPT_OUT_POLICY
+    """
+
+    def __init__(self, scope: Construct, construct_id: str, *, root_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # Create the organization (assumes it doesn't exist; for existing orgs, pass root_id as a prop)
-        org = CfnOrganization(self, "Organization", feature_set="ALL")
+        if not root_id or not root_id.startswith("r-"):
+            raise ValueError(
+                "root_id must be your organization root (r-xxxx). "
+                "Find it: aws organizations list-roots --query 'Roots[0].Id' --output text"
+            )
 
-        # Create the opt-out policy
-        ai_opt_out_policy = CfnPolicy(self, "AIOptOutPolicy",
+        policy = CfnPolicy(
+            self,
+            "AIOptOutPolicy",
             name="AI-OptOut-All-Services",
-            description="Opt out of AI service data usage",
+            description="Opt out of AI service data usage (child overrides locked)",
             type="AISERVICES_OPT_OUT_POLICY",
             content={
                 "services": {
+                    "@@operators_allowed_for_child_policies": ["@@none"],
                     "default": {
+                        "@@operators_allowed_for_child_policies": ["@@none"],
                         "opt_out_policy": {
-                            "@@assign": "optOut"
-                        }
-                    }
+                            "@@operators_allowed_for_child_policies": ["@@none"],
+                            "@@assign": "optOut",
+                        },
+                    },
                 }
             },
-            target_ids=[org.attr_root_id]
+            target_ids=[root_id],
         )
+        # Deleting the stack must not remove the org-wide privacy control.
+        policy.apply_removal_policy(RemovalPolicy.RETAIN)

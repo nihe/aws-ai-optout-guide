@@ -1,13 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  AI Services Opt-Out Policy (hardened variant). Locks child-policy overrides so member
+  accounts / OUs cannot opt individual services back in. Deploy ONCE in the Organizations
+  management account. Assumes the AISERVICES_OPT_OUT_POLICY policy type is already enabled
+  on the root (enabling a policy type is an API call, not a CloudFormation resource — see
+  templates/ai-opt-out-policy.yaml for a variant that enables it via a custom resource).
+
+Parameters:
+  OrganizationRootId:
+    Type: String
+    Description: >
+      Your organization root ID, e.g. r-ab12. Find it with:
+      aws organizations list-roots --query 'Roots[0].Id' --output text
+    AllowedPattern: '^r-[0-9a-z]{4,32}$'
+
 Resources:
   AIOptOutPolicy:
     Type: AWS::Organizations::Policy
+    # Deleting the stack must not remove the org-wide privacy control.
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
-      Name: AIServicesOptOut
+      Name: AI-OptOut-All-Services
+      Description: Opt out of AI service data usage (child overrides locked)
       Type: AISERVICES_OPT_OUT_POLICY
       Content:
         services:
+          '@@operators_allowed_for_child_policies': ['@@none']
           default:
+            '@@operators_allowed_for_child_policies': ['@@none']
             opt_out_policy:
+              '@@operators_allowed_for_child_policies': ['@@none']
               '@@assign': optOut
       TargetIds:
-        - !Ref AWS::OrganizationRoot
+        - !Ref OrganizationRootId
+
+Outputs:
+  PolicyId:
+    Description: ID of the created AI opt-out policy
+    Value: !Ref AIOptOutPolicy

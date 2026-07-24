@@ -1,52 +1,85 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Enable and configure AI Services Opt-Out Policy'
+Description: >
+  Enable and configure the AI Services Opt-Out Policy (hardened: child overrides locked).
+  Deploy ONCE in the Organizations management account. A Lambda-backed custom resource
+  enables the AISERVICES_OPT_OUT_POLICY policy type (an API call, not a native resource)
+  and returns the organization root ID for the policy attachment.
 
 Resources:
-  # Custom resource to enable policy type
+  # Custom resource: enables the policy type and returns the root ID
   EnableAIOptOutPolicyType:
     Type: Custom::EnablePolicyType
+    DependsOn:
+      - EnablePolicyFunctionLogGroup
+      - LambdaLoggingPolicy
     Properties:
       ServiceToken: !GetAtt EnablePolicyFunction.Arn
       PolicyType: AISERVICES_OPT_OUT_POLICY
 
-  # Lambda function to enable policy type
   EnablePolicyFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: EnableAIOptOutPolicyType
-      Runtime: python3.9
+      # No fixed FunctionName — CloudFormation generates a unique name (avoids collisions)
+      Runtime: python3.12
       Handler: index.handler
+      Timeout: 60
       Role: !GetAtt LambdaRole.Arn
       Code:
         ZipFile: |
           import boto3
           import cfnresponse
-          
+
           def handler(event, context):
               try:
-                  if event['RequestType'] == 'Delete':
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-                      return
-                  
                   org = boto3.client('organizations')
-                  roots = org.list_roots()['Roots']
-                  root_id = roots[0]['Id']
-                  
-                  # Enable AI opt-out policy type
+                  root_id = org.list_roots()['Roots'][0]['Id']
+
+                  if event['RequestType'] == 'Delete':
+                      # Do not disable the policy type on deletion. AIOptOutPolicy is separately
+                      # retained via DeletionPolicy/UpdateReplacePolicy: Retain.
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {'RootId': root_id},
+                                       physicalResourceId=f"{root_id}-AISERVICES_OPT_OUT_POLICY")
+                      return
+
                   try:
-                      org.enable_policy_type(
-                          RootId=root_id,
-                          PolicyType='AISERVICES_OPT_OUT_POLICY'
-                      )
+                      org.enable_policy_type(RootId=root_id, PolicyType='AISERVICES_OPT_OUT_POLICY')
                   except org.exceptions.PolicyTypeAlreadyEnabledException:
-                      pass  # Already enabled
-                  
-                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      pass  # idempotent
+
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'RootId': root_id},
+                                   physicalResourceId=f"{root_id}-AISERVICES_OPT_OUT_POLICY")
               except Exception as e:
                   print(f"Error: {str(e)}")
                   cfnresponse.send(event, context, cfnresponse.FAILED, {})
 
-  # Lambda execution role
+  EnablePolicyFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${EnablePolicyFunction}'
+      RetentionInDays: 90
+
+  # Logging permissions scoped to exactly this function's log group. Kept as a
+  # separate AWS::IAM::Policy because referencing the function name from within
+  # LambdaRole would create a circular dependency (Role -> Function -> Role).
+  # Deliberately no logs:CreateLogGroup — the log group is managed by
+  # CloudFormation, so the function can never race-create it.
+  LambdaLoggingPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: LambdaLoggingScoped
+      Roles:
+        - !Ref LambdaRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${EnablePolicyFunction}:*'
+
+  # Least privilege: the function only lists roots and enables the policy type.
+  # Policy creation/attachment is done by CloudFormation itself, not this Lambda.
   LambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -57,10 +90,8 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
-        - PolicyName: OrganizationsPolicy
+        - PolicyName: OrganizationsEnablePolicyType
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -68,27 +99,34 @@ Resources:
                 Action:
                   - organizations:EnablePolicyType
                   - organizations:ListRoots
-                  - organizations:CreatePolicy
-                  - organizations:AttachPolicy
                 Resource: '*'
 
-  # AI Opt-Out Policy
+  # Object-form Content (not a JSON string) so CloudFormation drift detection works.
   AIOptOutPolicy:
     Type: AWS::Organizations::Policy
+    # Deleting the stack must not remove the org-wide privacy control.
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     DependsOn: EnableAIOptOutPolicyType
     Properties:
       Name: AIServicesOptOut
-      Description: Opt out of AI service data usage
+      Description: Opt out of AI service data usage (child overrides locked)
       Type: AISERVICES_OPT_OUT_POLICY
-      Content: |
-        {
-          "services": {
-            "default": {
-              "opt_out_policy": {
-                "@@assign": "optOut"
-              }
-            }
-          }
-        }
+      Content:
+        services:
+          '@@operators_allowed_for_child_policies': ['@@none']
+          default:
+            '@@operators_allowed_for_child_policies': ['@@none']
+            opt_out_policy:
+              '@@operators_allowed_for_child_policies': ['@@none']
+              '@@assign': optOut
       TargetIds:
-        - !Sub '${AWS::AccountId}'
+        - !GetAtt EnableAIOptOutPolicyType.RootId
+
+Outputs:
+  PolicyId:
+    Description: ID of the created AI opt-out policy
+    Value: !Ref AIOptOutPolicy
+  RootId:
+    Description: Organization root the policy is attached to
+    Value: !GetAtt EnableAIOptOutPolicyType.RootId

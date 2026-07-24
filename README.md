@@ -1,67 +1,89 @@
 # AWS AI Opt-Out Guide
 
-A comprehensive guide and toolkit for opting out of AWS AI services' default data usage for model improvements. Protects your data privacy and ensures compliance.
+**One policy, thirty-plus services.** A guide and toolkit for opting your organization out of AWS AI services' default data usage for model improvement — scripts, IaC templates, and a verification tool, aligned with the AWS Well-Architected Framework.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+> **Updated July 2026.** The scope of the AI services opt-out policy has tripled — the official list now covers **31 services** (verified 2026-07-21), including Amazon CloudWatch, GuardDuty, Security Hub, AWS Glue, and DMS. Amazon Q Developer is being sunset in favor of **Kiro** (end of support: 30 April 2027). See [GUIDE.md](GUIDE.md) for the full write-up.
+
 ## Overview
 
-By default, some AWS AI services (e.g., Rekognition, Transcribe) use your data to improve models, potentially storing it outside your region. This repo provides scripts, templates, and instructions to opt out organization-wide.
+By default, a growing set of AWS AI services may use your content to improve their models — including model training — and may store it in an AWS Region outside the one you're using. This is a documented default, not a scandal; the point is to know it and make a deliberate decision. This repo provides scripts, templates, and instructions to opt out organization-wide.
 
-Key features:
-- Supports manual, IaC (Terraform, CloudFormation, CDK), and enterprise (Control Tower/LZA) methods.
-- Verification script to confirm opt-out.
-- Alignment with AWS Well-Architected Framework (e.g., MLSEC-01).
-- Handles transitions like CodeWhisperer to Amazon Q Developer.
-
-For full details, read [GUIDE.md](GUIDE.md) (the complete blog post).
+Key points:
+- **It's not an SCP.** `AISERVICES_OPT_OUT_POLICY` is a declarative Organizations policy (the `@@`-operator family), not an authorization policy. It isn't evaluated by IAM, so a misconfiguration fails *silently* — verification matters.
+- Supports manual, IaC (Terraform, CloudFormation, CDK), and enterprise (Control Tower / LZA) methods.
+- Templates use the **hardened variant** — `@@operators_allowed_for_child_policies` locks the opt-out so member accounts can't override it.
+- Fail-closed verification: the script validates the effective policy per account and exits non-zero on failure; the AWS Config rule publishes real `PutEvaluations` results.
+- Terraform and CDK reference your **existing** organization — no template creates or owns the organization (a destroyed stack must never be able to delete it).
+- Aligns with the AWS Well-Architected Framework (ML Lens MLSEC-01).
 
 ## Quick Start
 
-1. **Clone the repo**:
-   
-`` bash
-git clone https://github.com/yourusername/aws-ai-optout-guide.git cd aws-ai-optout-guide
-``
+1. **Clone the repo:**
 
-2. **Manual Opt-Out (Single Account)**:
-- Use scripts in `scripts/` and templates in `templates/`.
-- Example: Run Method 1 steps from GUIDE.md, using `templates/ai-opt-out-policy.json`.
+   ```bash
+   git clone https://github.com/nihe/aws-ai-optout-guide.git
+   cd aws-ai-optout-guide
+   ```
 
-3. **IaC Deployment**:
-- Terraform: See `templates/terraform/main.tf`.
-- CloudFormation: Deploy `templates/cloudformation/ai-opt-out.yaml`.
-- CDK (Python): `cd templates/cdk && cdk deploy` (install AWS CDK first: `pip install aws-cdk-lib`).
+2. **Manual opt-out (single account):**
+   - Use `scripts/` and `templates/`. See Method 1 in [GUIDE.md](GUIDE.md), using `templates/ai-opt-out-policy.json`.
 
-4. **Verify**:
+3. **IaC deployment:**
+   - Terraform: `templates/terraform/main.tf`
+   - CloudFormation: `templates/cloudformation/ai-opt-out.yaml` (pass your root ID `r-xxxx` as the `OrganizationRootId` parameter; assumes the policy type is enabled) or `templates/ai-opt-out-policy.yaml` (a Lambda-backed custom resource enables the policy type and resolves the root ID for you)
+   - CDK (Python): `cd templates/cdk && pip install -r requirements.txt && cdk deploy -c root_id=r-xxxx`
 
-`ỳthon
-python scripts/verify_ai_opt_out.py
-``
+4. **Verify (fail-closed):**
 
+   ```bash
+   python scripts/verify_ai_opt_out.py
+   ```
 
-5. **Enterprise (LZA/Control Tower)**:
-- Use workarounds in GUIDE.md, e.g., `scripts/post-lza-deployment.sh`.
+   The script validates the *effective* policy for every active account (hardened `optOut` + all child-policy locks) and exits non-zero on any failure — use it as a CI/CD or audit gate.
 
-## Affected Services (as of July 2025)
-- Amazon CodeGuru Profiler, Comprehend, Lex, Polly, Rekognition, Textract, Transcribe, Translate.
-- Newer: AWS Transform, Kiro (Preview).
+5. **Enterprise (LZA / Control Tower):**
+   - LZA has no native support (GitHub issue #107 is still open). Use `scripts/post-lza-deployment.sh` (post-deploy automation) or `config/customizations-config.yaml` (custom CloudFormation stack). See Method 2 in [GUIDE.md](GUIDE.md).
 
-Privacy-first services (no opt-out needed): Bedrock, SageMaker, Q Developer Pro.
+## Affected Services (as of July 2026)
+
+The official [Organizations supported-services list](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out_all.html#ai-opt-out-all-list) now counts **31 services**, well beyond the classic AI ones:
+
+- **Classic AI:** CodeGuru Profiler, Comprehend, Lex, Polly, Rekognition, Textract, Transcribe, Translate
+- **Observability & ops:** CloudWatch, AI Operations, DevOps Agent
+- **Security:** GuardDuty, Security Hub, Security Lake
+- **Data & integration:** Glue, DMS, DataZone, Entity Resolution
+- **Contact center:** the Amazon Connect family, Chime SDK voice analytics
+- **Business & end-user:** Amazon Quick, Supply Chain, WorkSpaces, Fraud Detector
+- **Newer agentic:** AWS Transform, FinOps Agent (Preview)
+
+Use `default` in your policy so current **and future** services are covered automatically.
+
+**Privacy-first (no opt-out needed):** Amazon Bedrock, Amazon SageMaker, and Kiro via IAM Identity Center / Kiro Enterprise.
+
+**Edge cases the org policy doesn't reach:** Industrial AI (Monitron, Lookout for Vision & Equipment — being retired, opt-out via AWS Support), and Builder-ID / social-login access to Kiro (opt out in the app settings). See GUIDE.md.
 
 ## Requirements
-- AWS CLI configured with admin access.
-- Python 3+ for scripts.
-- For IaC: Terraform, AWS CDK, or CloudFormation tools.
+
+- AWS CLI configured with management-account / admin access
+- An AWS Organization (creating one is free; required even for a single account)
+- Python 3.9+ for scripts
+- For IaC: Terraform, AWS CDK, or CloudFormation tooling
 
 ## Contributing
-- Fork and PR improvements.
-- Report issues or suggest features.
 
-See [GUIDE.md](GUIDE.md) for troubleshooting, FAQs, and compliance checklists.
+Fork and open a PR, or file an issue. Before submitting, run the regression tests — they guard the policy validators against regressions (including the locked-but-`optIn` case):
+
+```bash
+python3 -m pip install -r requirements-dev.txt
+python3 -m pytest tests/ -q
+``` See [GUIDE.md](GUIDE.md) for troubleshooting, FAQs, and compliance checklists.
 
 ## License
-MIT License - see [LICENSE](LICENSE) for details.
+
+MIT License — see [LICENSE](LICENSE).
 
 ## Acknowledgments
-Thanks to the AWS community for insights on privacy and implementations.
+
+Thanks to the AWS community for insights on privacy, Control Tower, and LZA implementations.
