@@ -1,0 +1,4 @@
+# Pinned versions this example was written and validated against.
+# Update deliberately (and re-run cdk synth) rather than floating.
+aws-cdk-lib==2.150.0
+constructs==10.3.0
