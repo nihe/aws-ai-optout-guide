@@ -78,7 +78,8 @@ Fork and open a PR, or file an issue. Before submitting, run the regression test
 ```bash
 python3 -m pip install -r requirements-dev.txt
 python3 -m pytest tests/ -q
-``` See [GUIDE.md](GUIDE.md) for troubleshooting, FAQs, and compliance checklists.
+``` 
+See [GUIDE.md](GUIDE.md) for troubleshooting, FAQs, and compliance checklists.
 
 ## License
 
