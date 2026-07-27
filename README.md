@@ -87,3 +87,5 @@ MIT License — see [LICENSE](LICENSE).
 ## Acknowledgments
 
 Thanks to the AWS community for insights on privacy, Control Tower, and LZA implementations.
+
+Portions of this codebase, its documentation, and code reviews were developed with assistance from [Claude](https://www.anthropic.com/claude), Anthropic's AI model. All AI-assisted contributions were reviewed and validated by the maintainers before merging.
