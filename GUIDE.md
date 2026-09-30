@@ -1,6 +1,8 @@
 # Protecting Your Data: A Developer's Guide to AWS AI Opt-Out Policies
 
-*Last updated: July 2026*
+*Last updated: September 2026*
+
+> **🔄 September 2026 check (2026-09-30)**: The supported-services list grew from 31 to **35 entries**. New since July: AWS Config, Amazon Bio Discovery, Amazon Connect Health (two entries: Operational Support and Model Training), Amazon Connect Talent, and Scenario Discovery. Section 50.3 is unchanged (the Service Terms were last updated 2026-09-15). LZA issue #107 is still open as of v1.16.3. The Q Developer → Kiro dates are unchanged. The `"default": "optOut"` policy covers the new services automatically, so no policy change is needed.
 
 > **📌 Major Update (July 2026) — One policy, thirty services**: A lot has changed since the last revision of this guide. The scope of the AI services opt-out policy has roughly **tripled** — the official list now counts **31 services** (verified 2026-07-21), including Amazon CloudWatch, GuardDuty, Security Hub, AWS Glue, and DMS. Amazon Q Developer (IDE plugins and CLI) is being **sunset in favor of Kiro** (end of support: April 30, 2027). And AWS has added an official opt-out path for Builder ID / social login users who don't have an AWS Organization. Details in the changelog below.
 
@@ -8,13 +10,13 @@
 
 If you read the previous version of this guide, here's the delta:
 
-1. **The opt-out policy now covers 31 services.** The official list has expanded far beyond the classic AI services. It now includes Amazon CloudWatch (ML functionality), Amazon GuardDuty, AWS Security Hub, Amazon Security Lake, AWS Glue, AWS Database Migration Service, Amazon WorkSpaces, the Amazon Connect family, Amazon Fraud Detector, AWS Supply Chain, Amazon Quick, AWS DevOps Agent, Amazon DataZone, and more. If your last review of this policy was in 2025, its blast radius has grown significantly — mostly in your favor.
+1. **The opt-out policy now covers 35 services** (31 in July 2026; see the September check above). The official list has expanded far beyond the classic AI services. It now includes Amazon CloudWatch (ML functionality), Amazon GuardDuty, AWS Security Hub, Amazon Security Lake, AWS Glue, AWS Database Migration Service, Amazon WorkSpaces, the Amazon Connect family, Amazon Fraud Detector, AWS Supply Chain, Amazon Quick, AWS DevOps Agent, Amazon DataZone, and more. If your last review of this policy was in 2025, its blast radius has grown significantly — mostly in your favor.
 2. **Section 50.3 was rewritten.** The list of services that use your data by default is now: CodeGuru Profiler, Comprehend, Lex, Polly, Rekognition, Textract, Transcribe, Translate, AWS Transform, AWS FinOps Agent (Preview), and — importantly, only — **Kiro Free Tier and Kiro individual subscribers**. Medical variants (Comprehend Medical, Transcribe Medical, HealthScribe) and Comprehend Detect PII are now explicitly excluded.
 3. **There's finally an opt-out path without an AWS Organization.** Section 50.3 now explicitly states that for access via AWS Builder ID or a third-party authentication provider (GitHub, Google), you can opt out using the mechanism in the service documentation — i.e., in-app settings. The previous version of this guide said "no org, no opt-out." That's no longer true.
 4. **Amazon Q Developer is being consolidated into Kiro.** The Q Developer CLI became the Kiro CLI in November 2025. New Q Developer signups were blocked on May 15, 2026, and the IDE plugins and paid subscriptions reach end of support on **April 30, 2027**. The privacy guidance in this article has been rewritten around Kiro.
 5. **Amazon Connect feature-level opt-outs were discontinued on March 31, 2026.** The Organizations policy is now the way to control Connect data usage.
 6. **Amazon Monitron is a special case**: opt-out requires contacting AWS Support — the Organizations policy doesn't cover it (Service Terms Section 81, Industrial AI Services).
-7. **LZA still doesn't support this natively.** GitHub issue #107 remains open as of July 2026 (I verified against the current `organization-config` source). The workarounds in this guide are still the way.
+7. **LZA still doesn't support this natively.** GitHub issue #107 remains open as of September 2026 (re-verified against the `organization-config` source and the release notes through v1.16.3). The workarounds in this guide are still the way.
 
 ## TL;DR
 
@@ -22,7 +24,7 @@ AWS AI services use your data to improve their models by default. To opt out:
 
 1. Enable AI opt-out policies in AWS Organizations
 2. Apply the `"default": "optOut"` policy to your root — use the hardened variant with `@@operators_allowed_for_child_policies` to prevent member accounts from overriding it
-3. For enterprise: Use Control Tower + custom automation (LZA doesn't natively support this — GitHub issue #107 is still open as of July 2026)
+3. For enterprise: Use Control Tower + custom automation (LZA doesn't natively support this — GitHub issue #107 is still open as of September 2026)
 4. Developers on Kiro Free Tier or with an individual subscription (Builder ID / social login): disable content collection in the IDE/CLI settings — the Organizations policy doesn't reach you there
 5. Verify with the provided Python script
 
@@ -85,7 +87,7 @@ All templates use the **hardened variant**: `@@operators_allowed_for_child_polic
 
 ## Which Services Are Affected?
 
-According to AWS Service Terms Section 50.3 (as of July 2026), the following services may use your data ("AI Content") for service improvement — including model training — by default:
+According to AWS Service Terms Section 50.3 (re-verified September 2026), the following services may use your data ("AI Content") for service improvement — including model training — by default:
 
 - **Amazon CodeGuru Profiler** — Code performance analysis
 - **Amazon Comprehend** — Natural language processing
@@ -109,14 +111,15 @@ Separately, the **Industrial AI Services** (Service Terms Section 81) — Amazon
 
 Here's the structural change that matters most in 2026: the data-usage clauses are no longer concentrated in Section 50.3. AWS has embedded opt-out-policy references into individual service sections throughout the Service Terms (for example, Amazon CloudWatch ML functionality in Section 8.2) and into service documentation.
 
-The result: the AWS Organizations documentation now lists **31 services** covered by the AI services opt-out policy (counted 2026-07-21 — the list included 30 when I started this revision), including:
+The result: the AWS Organizations documentation now lists **35 services** covered by the AI services opt-out policy (counted 2026-09-30; it was 30 when I started the July revision and 31 on 2026-07-21):
 
-- **Observability & Ops**: Amazon CloudWatch (ML functionality), Amazon AI Operations, AWS DevOps Agent
+- **Observability, Ops & Governance**: Amazon CloudWatch (ML functionality), Amazon AI Operations, AWS DevOps Agent, AWS Config
 - **Security**: Amazon GuardDuty, AWS Security Hub, Amazon Security Lake
 - **Data & Integration**: AWS Glue, AWS Database Migration Service, Amazon DataZone (incl. SageMaker Data Agent), AWS Entity Resolution
-- **Contact Center**: Amazon Connect Customer, Connect Customer Optimization, Contact Lens, Connect Decisions, Amazon Chime SDK voice analytics
-- **Business & End-User**: Amazon Quick (formerly QuickSight), AWS Supply Chain, Amazon WorkSpaces, Amazon Fraud Detector
-- **The classic AI services**: Comprehend, Lex, Polly, Rekognition, Textract, Transcribe, Translate, CodeGuru Profiler, Amazon Q, AWS Transform
+- **Contact Center**: Amazon Connect Customer, Connect Decisions, Connect Health (Operational Support; Model Training), Connect Talent, Amazon Chime SDK voice analytics. Connect Customer Optimization and Contact Lens no longer appear as separate entries.
+- **Business & End-User**: Amazon Quick (formerly QuickSight), AWS Supply Chain, Amazon WorkSpaces, Amazon Fraud Detector, AWS FinOps Agent
+- **Industry & Science**: Amazon Bio Discovery, Scenario Discovery (AWS IoT SiteWise)
+- **The classic AI services & developer tools**: Comprehend, Lex, Polly, Rekognition, Textract, Transcribe, Translate, CodeGuru Profiler, Amazon Q Developer, Amazon CodeWhisperer (listed separately, now part of Q Developer), AWS Transform
 
 Two things follow from this:
 
@@ -182,7 +185,7 @@ The trend since 2023 has been consistent: newer flagship services (Bedrock, Sage
 | Your Situation | Recommended Method | Why? |
 | --- | --- | --- |
 | Single AWS account | Method 1: AWS Organizations (create an org if needed) | Quick and simple |
-| Multiple accounts with Control Tower + LZA | Method 2: Control Tower + Custom Automation | LZA still doesn't natively support AI opt-out (issue #107 open as of July 2026) |
+| Multiple accounts with Control Tower + LZA | Method 2: Control Tower + Custom Automation | LZA still doesn't natively support AI opt-out (issue #107 open as of September 2026) |
 | Multiple accounts with standard Control Tower | Method 2: Control Tower + IaC | Good automation |
 | Complex multi-account with existing IaC | Method 3: Terraform/CloudFormation | Integrates with existing tools |
 | Individual developer (Builder ID / social login, Kiro) | Method 4 | The Organizations policy doesn't reach Builder ID access — use in-app opt-outs |
@@ -273,7 +276,7 @@ aws organizations attach-policy \
 
 ### Method 2: Enterprise-Scale Implementation
 
-> ⚠️ **Status check (July 2026)**: AWS Landing Zone Accelerator still does not natively support AI opt-out policies in its configuration. [GitHub issue #107](https://github.com/awslabs/landing-zone-accelerator-on-aws/issues/107) remains open, and the current `organization-config` schema contains no AI opt-out construct. Use one of the workaround options below and check the repo periodically.
+> ⚠️ **Status check (September 2026)**: AWS Landing Zone Accelerator still does not natively support AI opt-out policies in its configuration. [GitHub issue #107](https://github.com/awslabs/landing-zone-accelerator-on-aws/issues/107) remains open, and the `organization-config` schema (checked through v1.16.3) contains no AI opt-out construct. Use one of the workaround options below and check the repo periodically.
 
 #### Using AWS Control Tower + Landing Zone Accelerator (LZA)
 
@@ -425,7 +428,7 @@ All scripts are available in the GitHub repo: <https://github.com/nihe/aws-ai-op
 
 This section replaces the old "Q Developer Data Collection" section — because Q Developer itself is being replaced.
 
-**The state of play (July 2026):**
+**The state of play (September 2026):**
 
 - The **Amazon Q Developer CLI became the Kiro CLI** in November 2025 (auto-updated for most users; `q` and `q chat` entry points still work).
 - **New Q Developer signups were blocked on May 15, 2026.** Existing Pro subscriptions can still add users.
@@ -461,7 +464,7 @@ Content is **not** used for service improvement when you access Kiro:
 
 *Kiro Web:* Sign in → **Settings** → **Agent** settings → disable data sharing.
 
-Note that Kiro's autonomous agent has its own data protection page with an equivalent opt-out — if you use it, opt out there too. And per Kiro's docs, opting out doesn't affect input storage for abuse detection on the Free Tier.
+Note that Kiro's autonomous agent has its own data protection page with an equivalent opt-out — if you use it, opt out there too. And per Kiro's docs, opting out doesn't affect input storage for abuse detection on the Free Tier (inputs are retained for up to 60 days).
 
 This in-app path is now formally recognized in Section 50.3: for AI services accessed via AWS Builder ID or third-party authentication, the documented in-app mechanism *is* the official opt-out. If you're a solo developer without an AWS Organization, you're no longer in a gray zone.
 
@@ -875,7 +878,7 @@ A: Yes — specify individual services instead of `default`. I recommend default
 A: New data is protected immediately. AWS deletes historical content stored for service improvement (content required to provide the service to you is retained).
 
 **Q: Why doesn't AWS Landing Zone Accelerator support AI opt-out policies natively?**
-A: Still not implemented as of July 2026 — [issue #107](https://github.com/awslabs/landing-zone-accelerator-on-aws/issues/107) remains open. Use the workarounds in Method 2.
+A: Still not implemented as of September 2026 (LZA v1.16.3) — [issue #107](https://github.com/awslabs/landing-zone-accelerator-on-aws/issues/107) remains open. Use the workarounds in Method 2.
 
 ## Key Takeaways
 

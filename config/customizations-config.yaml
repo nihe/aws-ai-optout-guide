@@ -1,6 +1,6 @@
 # Landing Zone Accelerator (LZA) — customizations-config.yaml
 #
-# LZA does not natively support AI opt-out policies (GitHub issue #107 is still open).
+# LZA does not natively support AI opt-out policies (GitHub issue #107 is still open as of v1.16.3, September 2026).
 # This snippet deploys the hardened opt-out policy as a custom CloudFormation stack via the
 # LZA customizations pipeline (Method 2, Option B in GUIDE.md). The referenced template
 # (templates/ai-opt-out-policy.yaml) includes a Lambda-backed custom resource that enables
