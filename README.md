@@ -29,6 +29,7 @@ Key points:
 
 2. **Manual opt-out (single account):**
    - Use `scripts/` and `templates/`. See Method 1 in [GUIDE.md](GUIDE.md), using `templates/ai-opt-out-policy.json`.
+   - Alternative (limited release): **AWS Settings → Project → Actions → Opt out of data use by AWS AI services** attaches an opt-out policy for you. Run the verifier afterwards to confirm it's the hardened variant.
 
 3. **IaC deployment:**
    - Terraform: `templates/terraform/main.tf`
@@ -62,7 +63,7 @@ The official [Organizations supported-services list](https://docs.aws.amazon.com
 
 Use `default` in your policy so current **and future** services are covered automatically.
 
-**Privacy-first (no opt-out needed):** Amazon Bedrock, Amazon SageMaker, and Kiro via IAM Identity Center / Kiro Enterprise.
+**Privacy-first (no opt-out needed):** Amazon Bedrock, Amazon SageMaker, and Kiro via IAM Identity Center / Kiro Enterprise. Bedrock doesn't train on your content, but retention is a separate setting: some models require the `aws_review` data retention mode (AWS human review). If you need zero retention, set `data_retention_mode: none` per Region. See GUIDE.md.
 
 **Edge cases the org policy doesn't reach:** Industrial AI (Monitron, Lookout for Vision & Equipment — being retired, opt-out via AWS Support), and Builder-ID / social-login access to Kiro (opt out in the app settings). See GUIDE.md.
 

@@ -2,7 +2,7 @@
 
 *Last updated: September 2026*
 
-> **🔄 September 2026 check (2026-09-30)**: The supported-services list grew from 31 to **35 entries**. New since July: AWS Config, Amazon Bio Discovery, Amazon Connect Health (two entries: Operational Support and Model Training), Amazon Connect Talent, and Scenario Discovery. Section 50.3 is unchanged (the Service Terms were last updated 2026-09-15). LZA issue #107 is still open as of v1.16.3. The Q Developer → Kiro dates are unchanged. The `"default": "optOut"` policy covers the new services automatically, so no policy change is needed.
+> **🔄 September 2026 check (2026-09-30)**: The supported-services list grew from 31 to **35 entries**. New since July: AWS Config, Amazon Bio Discovery, Amazon Connect Health (two entries: Operational Support and Model Training), Amazon Connect Talent, and Scenario Discovery. Section 50.3 is unchanged (the Service Terms were last updated 2026-09-15). LZA issue #107 is still open as of v1.16.3. The Q Developer → Kiro dates are unchanged. The `"default": "optOut"` policy covers the new services automatically, so no policy change is needed. A follow-up check against the AWS documentation added four notes: the new [AWS Settings opt-out](#alternative-opt-out-through-aws-settings-limited-release), the [Bedrock data retention modes](#services-with-better-privacy-no-opt-out-needed), the split between Security Hub and Security Hub CSPM, and the Connect policy keys that no longer appear on the list page.
 
 > **📌 Major Update (July 2026) — One policy, thirty services**: A lot has changed since the last revision of this guide. The scope of the AI services opt-out policy has roughly **tripled** — the official list now counts **31 services** (verified 2026-07-21), including Amazon CloudWatch, GuardDuty, Security Hub, AWS Glue, and DMS. Amazon Q Developer (IDE plugins and CLI) is being **sunset in favor of Kiro** (end of support: April 30, 2027). And AWS has added an official opt-out path for Builder ID / social login users who don't have an AWS Organization. Details in the changelog below.
 
@@ -116,14 +116,14 @@ The result: the AWS Organizations documentation now lists **35 services** covere
 - **Observability, Ops & Governance**: Amazon CloudWatch (ML functionality), Amazon AI Operations, AWS DevOps Agent, AWS Config
 - **Security**: Amazon GuardDuty, AWS Security Hub, Amazon Security Lake
 - **Data & Integration**: AWS Glue, AWS Database Migration Service, Amazon DataZone (incl. SageMaker Data Agent), AWS Entity Resolution
-- **Contact Center**: Amazon Connect Customer, Connect Decisions, Connect Health (Operational Support; Model Training), Connect Talent, Amazon Chime SDK voice analytics. Connect Customer Optimization and Contact Lens no longer appear as separate entries.
+- **Contact Center**: Amazon Connect Customer, Connect Decisions, Connect Health (Operational Support; Model Training), Connect Talent, Amazon Chime SDK voice analytics. Connect Customer Optimization and Contact Lens no longer appear as separate entries on the list page, but `connectoptimization` and `contactlens` are still valid service keys in the [policy syntax](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out_syntax.html) (38 keys in total, plus `default`). If you pinned either key in a child policy, it still works.
 - **Business & End-User**: Amazon Quick (formerly QuickSight), AWS Supply Chain, Amazon WorkSpaces, Amazon Fraud Detector, AWS FinOps Agent
 - **Industry & Science**: Amazon Bio Discovery, Scenario Discovery (AWS IoT SiteWise)
 - **The classic AI services & developer tools**: Comprehend, Lex, Polly, Rekognition, Textract, Transcribe, Translate, CodeGuru Profiler, Amazon Q Developer, Amazon CodeWhisperer (listed separately, now part of Q Developer), AWS Transform
 
 Two things follow from this:
 
-**First**, the `"default": "optOut"` policy is more valuable than ever. Several of the security services (GuardDuty, Security Hub, Security Lake) state in their documentation that they don't *currently* collect content for service improvement — but the terms allow them to start, and the docs explicitly recommend opting out proactively. With a default opt-out at the root, you're covered before they flip that switch.
+**First**, the `"default": "optOut"` policy is more valuable than ever. Several of the security services (GuardDuty, Security Hub, Security Lake) state in their documentation that they don't *currently* collect content for service improvement — but the terms allow them to start, and the docs explicitly recommend opting out proactively. With a default opt-out at the root, you're covered before they flip that switch. AWS Config (new on the list) makes the same statement. One nuance for Security Hub: its opt-out page applies only to the enhanced **AWS Security Hub** launched on December 2, 2025. The original product is now called **AWS Security Hub CSPM**, and the data-use terms described there apply to CSPM customers only once they enable the enhanced Security Hub.
 
 **Second**, if you did a one-time compliance review of "which AWS services can use our data" in 2024 or 2025, that review is stale. The list grows; your policy strategy should assume it will keep growing.
 
@@ -131,9 +131,11 @@ Two things follow from this:
 
 These services don't use your content for training by default:
 
-- **Amazon Bedrock** — Explicitly does not use your prompts or completions for model training. Bedrock is now formally listed as an "AI Service" in Section 50.1, but it is *not* in the Section 50.3 data-usage list.
+- **Amazon Bedrock** — Explicitly does not use your prompts or completions for model training. Bedrock is now formally listed as an "AI Service" in Section 50.1, but it is *not* in the Section 50.3 data-usage list. **Retention is a separate question**, though: see the caveat below.
 - **Amazon SageMaker** — Your training data stays yours.
 - **Kiro via IAM Identity Center / Kiro Enterprise** — No content used for service improvement; Enterprise tenants are automatically opted out of telemetry and content collection (see Method 4).
+
+> **Bedrock data retention caveat (September 2026)**: "No training" is not the same as "no retention." Bedrock now has per-Region [data retention modes](https://docs.aws.amazon.com/bedrock/latest/userguide/data-retention.html), set at account or project level: `none` (zero data retention), `default` (the model's own retention policy applies; AWS may keep data for safety and abuse prevention), `aws_review` (AWS may keep inputs and outputs for **human review** within AWS), and a legacy `provider_data_share` that grants the same permission. In none of these modes does the model provider receive your content. Some models require `aws_review` as a condition of access (AWS names Claude Fable 5 and 5.1); if your effective mode is `none` or `default`, those models are unavailable. If you need guaranteed zero retention, set `data_retention_mode` to `none` in every Region you use (the setting doesn't propagate across Regions) and accept that `aws_review`-only models are off the table. This is a Bedrock setting, not part of the Organizations opt-out policy.
 
 > **Cross-region inference caveat**: Service Terms Section 1.24 now lists ~25 services with embedded generative AI features powered by Bedrock (from Connect to GuardDuty to WorkSpaces). These features may use **cross-region inference** by default — your content isn't used for training, but it may be *processed* in a different AWS region for capacity reasons. If you have strict data residency requirements (and if you're reading this from the DACH region, you probably do), that's a separate control to review per service. Training opt-out and residency are related but distinct problems.
 
@@ -273,6 +275,21 @@ aws organizations attach-policy \
     --policy-id $POLICY_ID \
     --target-id $ROOT_ID
 ```
+
+#### Alternative: Opt Out Through AWS Settings (Limited Release)
+
+AWS is rolling out a console-free path in **AWS Settings**. Per the [AWS Account Management docs](https://docs.aws.amazon.com/accounts/latest/reference/opt-out-ai-data-use.html), it is currently available only to a limited number of customers:
+
+1. Open [AWS Settings](https://settings.aws.com).
+2. In the navigation pane, choose **Project**.
+3. Under **Overview**, choose **Actions** → **Opt out of data use by AWS AI services**.
+4. Confirm and choose **Opt out**.
+
+Only the project owner can do this. Under the hood, **AWS attaches an AI services opt-out policy to your organization** — it's the same mechanism as Steps 1–3, not a separate control. Monitron still needs its separate support request.
+
+Two caveats before you rely on it:
+- The docs don't say whether the policy AWS attaches is the hardened variant (with the three `@@operators_allowed_for_child_policies` locks) or the simple one. **Run `scripts/verify_ai_opt_out.py` afterwards**; if it reports that the policy isn't hardened, replace or supplement it with `templates/ai-opt-out-policy.json`.
+- If you manage the policy with IaC (Method 3), a policy created outside your stack is drift. Decide on one owner for the policy.
 
 ### Method 2: Enterprise-Scale Implementation
 
@@ -911,6 +928,10 @@ A: Still not implemented as of September 2026 (LZA v1.16.3) — [issue #107](htt
 - [Kiro Data Protection & Opt-Out](https://kiro.dev/docs/privacy-and-security/data-protection/)
 - [Amazon Connect Service Improvement Opt-Out](https://docs.aws.amazon.com/connect/latest/adminguide/data-opt-out.html)
 - [GuardDuty Data Usage Opt-Out](https://docs.aws.amazon.com/guardduty/latest/ug/guardduty-opting-out-using-data.html)
+- [Security Hub Data Usage Opt-Out](https://docs.aws.amazon.com/securityhub/latest/userguide/security-hub-opt-out.html)
+- [AWS Config Data Usage Opt-Out](https://docs.aws.amazon.com/config/latest/developerguide/opting-out-data-service-improvement.html)
+- [Opt Out via AWS Settings (limited release)](https://docs.aws.amazon.com/accounts/latest/reference/opt-out-ai-data-use.html)
+- [Amazon Bedrock Data Retention Modes](https://docs.aws.amazon.com/bedrock/latest/userguide/data-retention.html)
 - [ML Lens — Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/machine-learning-lens/welcome.html)
 - [Landing Zone Accelerator Documentation](https://aws.amazon.com/solutions/implementations/landing-zone-accelerator-on-aws/)
 
