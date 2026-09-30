@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **Updated July 2026.** The scope of the AI services opt-out policy has tripled — the official list now covers **31 services** (verified 2026-07-21), including Amazon CloudWatch, GuardDuty, Security Hub, AWS Glue, and DMS. Amazon Q Developer is being sunset in favor of **Kiro** (end of support: 30 April 2027). See [GUIDE.md](GUIDE.md) for the full write-up.
+> **Updated September 2026.** The scope of the AI services opt-out policy has more than tripled. The official list now covers **35 services** (verified 2026-09-30, up from 31 in July), including Amazon CloudWatch, GuardDuty, Security Hub, AWS Glue, DMS, and, new since July, AWS Config. Amazon Q Developer is being sunset in favor of **Kiro** (end of support: 30 April 2027). See [GUIDE.md](GUIDE.md) for the full write-up.
 
 ## Overview
 
@@ -44,19 +44,21 @@ Key points:
    The script validates the *effective* policy for every active account (hardened `optOut` + all child-policy locks) and exits non-zero on any failure — use it as a CI/CD or audit gate.
 
 5. **Enterprise (LZA / Control Tower):**
-   - LZA has no native support (GitHub issue #107 is still open). Use `scripts/post-lza-deployment.sh` (post-deploy automation) or `config/customizations-config.yaml` (custom CloudFormation stack). See Method 2 in [GUIDE.md](GUIDE.md).
+   - LZA has no native support (GitHub issue #107 is still open as of v1.16.3). Use `scripts/post-lza-deployment.sh` (post-deploy automation) or `config/customizations-config.yaml` (custom CloudFormation stack). See Method 2 in [GUIDE.md](GUIDE.md).
 
-## Affected Services (as of July 2026)
+## Affected Services (as of September 2026)
 
-The official [Organizations supported-services list](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out_all.html#ai-opt-out-all-list) now counts **31 services**, well beyond the classic AI ones:
+The official [Organizations supported-services list](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_ai-opt-out_all.html#ai-opt-out-all-list) now counts **35 services**, well beyond the classic AI ones:
 
 - **Classic AI:** CodeGuru Profiler, Comprehend, Lex, Polly, Rekognition, Textract, Transcribe, Translate
-- **Observability & ops:** CloudWatch, AI Operations, DevOps Agent
+- **Observability, ops & governance:** CloudWatch, AI Operations, DevOps Agent, AWS Config
 - **Security:** GuardDuty, Security Hub, Security Lake
 - **Data & integration:** Glue, DMS, DataZone, Entity Resolution
-- **Contact center:** the Amazon Connect family, Chime SDK voice analytics
+- **Contact center:** the Amazon Connect family (incl. Connect Health and Connect Talent), Chime SDK voice analytics
 - **Business & end-user:** Amazon Quick, Supply Chain, WorkSpaces, Fraud Detector
-- **Newer agentic:** AWS Transform, FinOps Agent (Preview)
+- **Newer agentic:** AWS Transform, FinOps Agent
+- **Industry & science:** Amazon Bio Discovery, Scenario Discovery (IoT SiteWise)
+- **Developer tools:** Amazon Q Developer (incl. CodeWhisperer)
 
 Use `default` in your policy so current **and future** services are covered automatically.
 
