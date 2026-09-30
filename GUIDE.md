@@ -953,6 +953,8 @@ Found an error or have an improvement? Leave a comment below, submit a PR to the
 
 Thanks to the AWS community members who contributed insights, especially regarding Control Tower and LZA implementations, and to the readers who flagged the Kiro tier distinction.
 
+The research, the September 2026 re-verification against the AWS documentation, and the updates to this guide were done with the help of [Claude](https://www.anthropic.com/claude), Anthropic's AI model, in Claude Code. I reviewed and validated every change before publishing.
+
 ---
 
 *Found this helpful? Have questions or improvements? Let me know in the comments below!*
